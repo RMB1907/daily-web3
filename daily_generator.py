@@ -59,12 +59,25 @@ End with:
 Return only this formatted explanation. Do not include anything else.
 """
 
-    res = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7
-    )
-    return res["choices"][0]["message"]["content"]
+    try:
+        res = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+        return res["choices"][0]["message"]["content"]
+    except Exception as e:
+        print("⚠️ OpenAI API Error:", e)
+        return f"""### 📘 Concept: {concept_name}
+
+#### 🧩 ELI5 Allegory:
+Imagine you're learning about {concept_name} for the first time. This concept is important in blockchain and has various applications.
+
+#### 📖 Standard Definition:
+This is a placeholder explanation for {concept_name}. The actual definition could not be generated due to API limits or connection issues.
+
+**Keywords**: {concept_name.lower().replace(" ", ", ")}
+"""
 
 # Format file content
 def format_output(title, content):
