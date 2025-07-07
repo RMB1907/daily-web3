@@ -26,15 +26,25 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python daily_generator.py
 
+      - name: Debug Git Remote
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          echo "Before override:"
+          git remote -v
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git
+          echo "After override:"
+          git remote -v
+
       - name: Commit and Push
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config --global user.name "Auto Commit Bot"
           git config --global user.email "bot@example.com"
-          
-          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git
-          
+
           git add docs/index.md docs/concepts/*.md
           git commit -m "Daily blockchain concept" || echo "No changes"
-          git push origin master
+
+          # Inline push with token (bypasses remote fallback)
+          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git HEAD:master
