@@ -35,3 +35,7 @@ Deploy to GitHub Pages:
 ```bash
 mkdocs gh-deploy
 ```
+To preview the site locally, run:
+```bash
+mkdocs serve
+```
