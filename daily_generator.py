@@ -4,15 +4,19 @@ from pathlib import Path
 from datetime import date
 import hashlib
 from dotenv import load_dotenv
+import sys
 
 # Load API key
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Base path (absolute for safety in CI/CD)
+BASE_DIR = Path(__file__).resolve().parent
+
 # Paths
-KEYWORDS_DIR = Path("keywords")
-OUTPUT_FILE = Path("docs/index.md")
-ARCHIVE_DIR = Path("docs/concepts")
+KEYWORDS_DIR = BASE_DIR / "keywords"
+OUTPUT_FILE = BASE_DIR / "docs" / "index.md"
+ARCHIVE_DIR = BASE_DIR / "docs" / "concepts"
 INDEX_PATH = ARCHIVE_DIR / "index.md"
 
 # Get all keyword text files
@@ -21,6 +25,9 @@ def get_all_keyword_files():
 
 # Choose one deterministically based on today's date
 def pick_today_file(files):
+    if not files:
+        print("❌ No keyword files found in /keywords/. Skipping generation.")
+        sys.exit(0)  # Graceful exit: not an error
     today = date.today().isoformat()
     index = int(hashlib.sha256(today.encode()).hexdigest(), 16) % len(files)
     return files[index]
@@ -74,11 +81,13 @@ def update_concepts_index(title, filename):
     if entry not in lines:
         lines.insert(2, entry)  # insert after title
         INDEX_PATH.write_text("\n".join(lines), encoding="utf-8")
-        print(f"Added to archive index: {title}")
+        print(f"🗂️  Added to archive index: {title}")
 
 # Main logic
 def main():
     files = get_all_keyword_files()
+    print(f"🔍 Found {len(files)} keyword file(s)")
+
     chosen_file = pick_today_file(files)
 
     concept_name = chosen_file.stem.replace("_", " ").title()
@@ -98,7 +107,7 @@ def main():
     # Update concepts/index.md
     update_concepts_index(concept_name, archive_filename)
 
-    print(f"Saved concept: {concept_name}")
+    print(f"✅ Saved concept: {concept_name}")
 
 if __name__ == "__main__":
     main()
