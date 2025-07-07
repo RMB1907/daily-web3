@@ -2,7 +2,8 @@ name: Daily Blockchain Concept
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs daily at 12:00 AM UTC (5:30 AM IST)
+    - cron: '0 19 * * *'  # 12:30 AM IST
+    - cron: '0 7 * * *'   # 12:30 PM IST
   workflow_dispatch:
 
 jobs:
@@ -26,9 +27,11 @@ jobs:
         run: python daily_generator.py
 
       - name: Commit and Push
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          git config --global user.name "Auto Commit Bot"
+          git config --global user.email "bot@example.com"
           git add .
           git commit -m "Daily blockchain concept" || echo "No changes to commit"
-          git push
+          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git
