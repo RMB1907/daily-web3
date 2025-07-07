@@ -31,17 +31,6 @@ Run the script:
 ```bash
 python daily_generator.py
 ```
-
-## Keywords
-
-The files `keywords/all.txt` and `keywords/used.txt` are intentionally untracked to preserve the daily reveal.
-
-To use this project:
-
-- Add your keyword list to `keywords/all.txt`
-- Leave `keywords/used.txt` empty (it will update automatically)
-
-
 Deploy to GitHub Pages:
 ```bash
 mkdocs gh-deploy
