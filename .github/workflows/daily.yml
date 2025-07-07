@@ -32,6 +32,9 @@ jobs:
         run: |
           git config --global user.name "Auto Commit Bot"
           git config --global user.email "bot@example.com"
-          git add .
-          git commit -m "Daily blockchain concept" || echo "No changes to commit"
-          git push https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git
+          
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git
+          
+          git add docs/index.md docs/concepts/*.md
+          git commit -m "Daily blockchain concept" || echo "No changes"
+          git push origin master
