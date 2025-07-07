@@ -1,7 +1,7 @@
 import os
 import sys
 import hashlib
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 import requests
@@ -23,13 +23,18 @@ INDEX_PATH = ARCHIVE_DIR / "index.md"
 def get_all_keyword_files():
     return list(KEYWORDS_DIR.glob("**/*.txt"))
 
-# Choose one deterministically based on today's date
+# Choose one deterministically based on current 5-minute time slot
 def pick_today_file(files):
     if not files:
         print("❌ No keyword files found in /keywords/. Skipping generation.")
         sys.exit(0)
-    today = date.today().isoformat()
-    index = int(hashlib.sha256(today.encode()).hexdigest(), 16) % len(files)
+
+    # Use a rotating "time bucket" (e.g., every 5 minutes)
+    now = datetime.now()
+    rounded_minute = now.minute - (now.minute % 5)
+    time_key = now.strftime(f"%Y-%m-%d-%H-{rounded_minute:02d}")
+
+    index = int(hashlib.sha256(time_key.encode()).hexdigest(), 16) % len(files)
     return files[index]
 
 # Ask Groq (Mixtral) for the explanation
@@ -99,7 +104,6 @@ def main():
     print(f"🔍 Found {len(files)} keyword file(s)")
 
     chosen_file = pick_today_file(files)
-
     concept_name = chosen_file.stem.replace("_", " ").title()
     context = chosen_file.read_text(encoding="utf-8").strip()
 
@@ -109,9 +113,10 @@ def main():
     # Write to homepage
     OUTPUT_FILE.write_text(f"# Concept of the Day: **{concept_name}**\n\n{explanation}", encoding="utf-8")
 
-    # Archive
+    # Archive (based on current date-time)
     ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    archive_filename = f"{date.today().isoformat()}.md"
+    timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M")
+    archive_filename = f"{timestamp}.md"
     archive_path = ARCHIVE_DIR / archive_filename
     archive_path.write_text(format_output(concept_name, explanation), encoding="utf-8")
 
