@@ -1,6 +1,7 @@
 import os
 import sys
 import hashlib
+import random
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
@@ -10,51 +11,22 @@ import requests
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Base paths
+# Paths
 BASE_DIR = Path(__file__).resolve().parent
 KEYWORDS_FILE = BASE_DIR / "keywords" / "all.txt"
+USED_KEYWORDS_FILE = BASE_DIR / "keywords" / "used.txt"
 OUTPUT_FILE = BASE_DIR / "docs" / "index.md"
 ARCHIVE_DIR = BASE_DIR / "docs" / "concepts"
 INDEX_PATH = ARCHIVE_DIR / "index.md"
 
-# Load all keywords
-def load_keywords():
-    if not KEYWORDS_FILE.exists():
-        print("❌ keywords/all.txt not found.")
-        sys.exit(0)
-    lines = KEYWORDS_FILE.read_text(encoding="utf-8").strip().splitlines()
-    return [line.strip() for line in lines if line.strip()]
-
-# Pick keyword and remove it from the list
-def pick_keyword_and_remove(keywords):
-    if not keywords:
-        print("🎉 All keywords used.")
-        sys.exit(0)
-
-    now = datetime.now()
-    rounded_minute = now.minute - (now.minute % 5)
-    time_key = now.strftime(f"%Y-%m-%d-%H-{rounded_minute:02d}")
-
-    index = int(hashlib.sha256(time_key.encode()).hexdigest(), 16) % len(keywords)
-    concept = keywords[index]
-
-    # Remove the used keyword
-    del keywords[index]
-    KEYWORDS_FILE.write_text("\n".join(keywords), encoding="utf-8")
-
-    return concept
-
-# Ask Groq (Mixtral) for the explanation
-def ask_groq(concept_name):
+def ask_groq(concept_name, context=""):
     prompt = f"""
 You are a professional blockchain educator.
 
 Today's keyword is: {concept_name}
 
 Context from my notes:
-\"\"\"
-{concept_name}
-\"\"\"
+\"\"\"{context}\"\"\"
 
 Write in the following format:
 
@@ -64,14 +36,13 @@ Write in the following format:
 Start with a simple real-world analogy or story that makes the concept intuitive for a beginner. Use plain language. Avoid jargon and technical terms. Keep the tone clear and relatable.
 
 #### 📖 Standard Definition:
-Provide a clear and concise explanation of the concept using simple language. Do not include code. Do not use bullet points. Do not use parentheses. Do not use hyphens or dashes of any kind. Use full sentences. The tone should be beginner-friendly and professional.
+Provide a clear and concise explanation of the concept using simple language. Do not include code. Do not use bullet points. Do not use parentheses or dashes. Use full sentences. The tone should be beginner-friendly and professional.
 
 End with:
 **Keywords**: list the main keywords related to the concept, separated by commas
 
 Return only this formatted explanation. Do not include anything else.
 """
-
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -83,61 +54,79 @@ Return only this formatted explanation. Do not include anything else.
         "temperature": 0.7,
         "max_tokens": 800
     }
-
-    
     response = requests.post(url, headers=headers, json=data)
-    response = requests.post(url, headers=headers, json=data)
-
-    # Log detailed error if not OK
     if response.status_code != 200:
-        print("❌ Groq API Error:")
-        print("Status:", response.status_code)
-        print("Details:", response.text)  # This will explain *why* Groq rejected it
-
-    response.raise_for_status()
+        print(f"❌ Groq API Error {response.status_code}")
+        print(response.text)
+        response.raise_for_status()
     return response.json()["choices"][0]["message"]["content"]
 
-# Archive format
 def format_output(title, content):
     return f"# {title}\n\n{content}"
 
-# Update concepts index
 def update_concepts_index(title, filename):
     if INDEX_PATH.exists():
         lines = INDEX_PATH.read_text(encoding="utf-8").strip().splitlines()
     else:
         lines = ["# Concept Archive", ""]
-
     entry = f"- [{title}]({filename})"
     if entry not in lines:
         lines.insert(2, entry)
         INDEX_PATH.write_text("\n".join(lines), encoding="utf-8")
         print(f"🗂️  Added to archive index: {title}")
 
-# Main
+def load_keywords(path):
+    if path.exists():
+        return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return []
+
 def main():
-    keywords = load_keywords()
+    # Load all keywords
+    keywords = load_keywords(KEYWORDS_FILE)
+
+    # If empty, recycle used.txt
+    if not keywords:
+        used = load_keywords(USED_KEYWORDS_FILE)
+        if not used:
+            print("🎉 All keywords completed. Nothing left to restore.")
+            OUTPUT_FILE.write_text("# 🎉 All Topics Covered!\n\nYou've reached the end of the archive.", encoding="utf-8")
+            return
+        random.shuffle(used)
+        KEYWORDS_FILE.write_text("\n".join(used), encoding="utf-8")
+        USED_KEYWORDS_FILE.write_text("", encoding="utf-8")
+        keywords = used
+        print(f"♻️ Recycled {len(keywords)} keywords from used.txt")
+
     print(f"🧠 Remaining keywords: {len(keywords)}")
 
-    concept_name = pick_keyword_and_remove(keywords)
-    print(f"📌 Generating explanation for: {concept_name}")
+    # Randomly pick one keyword
+    today = datetime.now().strftime("%Y-%m-%d")
+    index = int(hashlib.sha256(today.encode()).hexdigest(), 16) % len(keywords)
+    keyword = keywords[index].strip().title()
 
-    explanation = ask_groq(concept_name)
+    print(f"📌 Generating explanation for: {keyword}")
+    explanation = ask_groq(keyword)
 
     # Write to homepage
-    OUTPUT_FILE.write_text(f"# Concept of the Day: **{concept_name}**\n\n{explanation}", encoding="utf-8")
+    OUTPUT_FILE.write_text(f"# Concept of the Day: **{keyword}**\n\n{explanation}", encoding="utf-8")
 
     # Archive
     ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M")
     archive_filename = f"{timestamp}.md"
     archive_path = ARCHIVE_DIR / archive_filename
-    archive_path.write_text(format_output(concept_name, explanation), encoding="utf-8")
+    archive_path.write_text(format_output(keyword, explanation), encoding="utf-8")
 
-    # Update index
-    update_concepts_index(concept_name, archive_filename)
+    # Index
+    update_concepts_index(keyword, archive_filename)
 
-    print(f"✅ Saved concept: {concept_name}")
+    # Remove used word and log it
+    del keywords[index]
+    KEYWORDS_FILE.write_text("\n".join(keywords), encoding="utf-8")
+    with USED_KEYWORDS_FILE.open("a", encoding="utf-8") as f:
+        f.write(keyword + "\n")
+
+    print(f"✅ Saved concept: {keyword}")
 
 if __name__ == "__main__":
     main()

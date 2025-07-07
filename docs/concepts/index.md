@@ -1,5 +1,3 @@
 # 📚 Blockchain Concept Archive
-
-- [bitcoin ETF](2025-07-07-11-47.md)
-- [infrastructure DAO](2025-07-07-11-47.md)
-- [Nfts Tokens](2025-07-07.md)
+- [Linea](2025-07-07-12-35.md)
+- [Mev](2025-07-07-12-37.md)
