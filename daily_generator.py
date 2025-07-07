@@ -10,35 +10,42 @@ import requests
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Base path
+# Base paths
 BASE_DIR = Path(__file__).resolve().parent
-
-# Paths
-KEYWORDS_DIR = BASE_DIR / "keywords"
+KEYWORDS_FILE = BASE_DIR / "keywords" / "all.txt"
 OUTPUT_FILE = BASE_DIR / "docs" / "index.md"
 ARCHIVE_DIR = BASE_DIR / "docs" / "concepts"
 INDEX_PATH = ARCHIVE_DIR / "index.md"
 
-# Get all keyword text files
-def get_all_keyword_files():
-    return list(KEYWORDS_DIR.glob("**/*.txt"))
+# Load all keywords
+def load_keywords():
+    if not KEYWORDS_FILE.exists():
+        print("❌ keywords/all.txt not found.")
+        sys.exit(0)
+    lines = KEYWORDS_FILE.read_text(encoding="utf-8").strip().splitlines()
+    return [line.strip() for line in lines if line.strip()]
 
-# Choose one deterministically based on current 5-minute time slot
-def pick_today_file(files):
-    if not files:
-        print("❌ No keyword files found in /keywords/. Skipping generation.")
+# Pick keyword and remove it from the list
+def pick_keyword_and_remove(keywords):
+    if not keywords:
+        print("🎉 All keywords used.")
         sys.exit(0)
 
-    # Use a rotating "time bucket" (e.g., every 5 minutes)
     now = datetime.now()
     rounded_minute = now.minute - (now.minute % 5)
     time_key = now.strftime(f"%Y-%m-%d-%H-{rounded_minute:02d}")
 
-    index = int(hashlib.sha256(time_key.encode()).hexdigest(), 16) % len(files)
-    return files[index]
+    index = int(hashlib.sha256(time_key.encode()).hexdigest(), 16) % len(keywords)
+    concept = keywords[index]
+
+    # Remove the used keyword
+    del keywords[index]
+    KEYWORDS_FILE.write_text("\n".join(keywords), encoding="utf-8")
+
+    return concept
 
 # Ask Groq (Mixtral) for the explanation
-def ask_groq(concept_name, context):
+def ask_groq(concept_name):
     prompt = f"""
 You are a professional blockchain educator.
 
@@ -46,7 +53,7 @@ Today's keyword is: {concept_name}
 
 Context from my notes:
 \"\"\"
-{context}
+{concept_name}
 \"\"\"
 
 Write in the following format:
@@ -71,21 +78,30 @@ Return only this formatted explanation. Do not include anything else.
         "Content-Type": "application/json"
     }
     data = {
-        "model": "mixtral-8x7b-32768",
+        "model": "llama3-8b-8192",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
         "max_tokens": 800
     }
 
+    
     response = requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=data)
+
+    # Log detailed error if not OK
+    if response.status_code != 200:
+        print("❌ Groq API Error:")
+        print("Status:", response.status_code)
+        print("Details:", response.text)  # This will explain *why* Groq rejected it
+
     response.raise_for_status()
     return response.json()["choices"][0]["message"]["content"]
 
-# Format archive file content
+# Archive format
 def format_output(title, content):
     return f"# {title}\n\n{content}"
 
-# Add to concepts/index.md
+# Update concepts index
 def update_concepts_index(title, filename):
     if INDEX_PATH.exists():
         lines = INDEX_PATH.read_text(encoding="utf-8").strip().splitlines()
@@ -94,33 +110,31 @@ def update_concepts_index(title, filename):
 
     entry = f"- [{title}]({filename})"
     if entry not in lines:
-        lines.insert(2, entry)  # insert after title
+        lines.insert(2, entry)
         INDEX_PATH.write_text("\n".join(lines), encoding="utf-8")
         print(f"🗂️  Added to archive index: {title}")
 
 # Main
 def main():
-    files = get_all_keyword_files()
-    print(f"🔍 Found {len(files)} keyword file(s)")
+    keywords = load_keywords()
+    print(f"🧠 Remaining keywords: {len(keywords)}")
 
-    chosen_file = pick_today_file(files)
-    concept_name = chosen_file.stem.replace("_", " ").title()
-    context = chosen_file.read_text(encoding="utf-8").strip()
-
+    concept_name = pick_keyword_and_remove(keywords)
     print(f"📌 Generating explanation for: {concept_name}")
-    explanation = ask_groq(concept_name, context)
+
+    explanation = ask_groq(concept_name)
 
     # Write to homepage
     OUTPUT_FILE.write_text(f"# Concept of the Day: **{concept_name}**\n\n{explanation}", encoding="utf-8")
 
-    # Archive (based on current date-time)
+    # Archive
     ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M")
     archive_filename = f"{timestamp}.md"
     archive_path = ARCHIVE_DIR / archive_filename
     archive_path.write_text(format_output(concept_name, explanation), encoding="utf-8")
 
-    # Update archive index
+    # Update index
     update_concepts_index(concept_name, archive_filename)
 
     print(f"✅ Saved concept: {concept_name}")
