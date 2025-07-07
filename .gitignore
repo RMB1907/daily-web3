@@ -1,0 +1,18 @@
+# Don't upload your API keys
+.env
+
+# Don't upload raw keyword notes
+keywords/
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.log
+
+# VSCode / IDE configs
+.vscode/
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db

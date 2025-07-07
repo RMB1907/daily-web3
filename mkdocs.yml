@@ -1,0 +1,6 @@
+site_name: Blockchain Concepts Daily
+nav:
+  - Home: index.md
+  - All Concepts: concepts/index.md
+theme:
+  name: material
