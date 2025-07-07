@@ -30,6 +30,10 @@ jobs:
         run: |
           echo "Git remotes before push:"
           git remote -v
+          
+      - name: Debug Token Push URL
+        run: |
+          echo "Push URL: https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git"
 
       - name: Commit and Push
         run: |
