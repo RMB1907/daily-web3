@@ -1,2 +1,18 @@
-openai
-python-dotenv
+# Env + HTTP client
+python-dotenv>=1.0.1
+requests>=2.31.0
+
+# Static site generator
+mkdocs>=1.5.3
+
+# Recommended theme
+mkdocs-material>=9.5.10
+
+# Plugin: nested folders, nice sidebar
+mkdocs-awesome-pages-plugin>=2.9.2
+
+# Optional: if you want Markdown include/import support
+mkdocs-markdownextradata-plugin>=0.2.5
+
+# Optional: syntax highlighting, extensions, etc.
+Pygments>=2.17.2

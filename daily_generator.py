@@ -1,16 +1,16 @@
-import openai
 import os
-from pathlib import Path
-from datetime import date
-import hashlib
-from dotenv import load_dotenv
 import sys
+import hashlib
+from datetime import date
+from pathlib import Path
+from dotenv import load_dotenv
+import requests
 
 # Load API key
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Base path (absolute for safety in CI/CD)
+# Base path
 BASE_DIR = Path(__file__).resolve().parent
 
 # Paths
@@ -27,14 +27,15 @@ def get_all_keyword_files():
 def pick_today_file(files):
     if not files:
         print("❌ No keyword files found in /keywords/. Skipping generation.")
-        sys.exit(0)  # Graceful exit: not an error
+        sys.exit(0)
     today = date.today().isoformat()
     index = int(hashlib.sha256(today.encode()).hexdigest(), 16) % len(files)
     return files[index]
 
-# Ask GPT for the explanation
-def ask_openai(concept_name, context):
-    prompt = f"""You are a professional blockchain educator.
+# Ask Groq (Mixtral) for the explanation
+def ask_groq(concept_name, context):
+    prompt = f"""
+You are a professional blockchain educator.
 
 Today's keyword is: {concept_name}
 
@@ -59,31 +60,27 @@ End with:
 Return only this formatted explanation. Do not include anything else.
 """
 
-    try:
-        res = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7
-        )
-        return res["choices"][0]["message"]["content"]
-    except Exception as e:
-        print("⚠️ OpenAI API Error:", e)
-        return f"""### 📘 Concept: {concept_name}
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "mixtral-8x7b-32768",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 800
+    }
 
-#### 🧩 ELI5 Allegory:
-Imagine you're learning about {concept_name} for the first time. This concept is important in blockchain and has various applications.
+    response = requests.post(url, headers=headers, json=data)
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
 
-#### 📖 Standard Definition:
-This is a placeholder explanation for {concept_name}. The actual definition could not be generated due to API limits or connection issues.
-
-**Keywords**: {concept_name.lower().replace(" ", ", ")}
-"""
-
-# Format file content
+# Format archive file content
 def format_output(title, content):
     return f"# {title}\n\n{content}"
 
-# Add today's topic to concepts/index.md
+# Add to concepts/index.md
 def update_concepts_index(title, filename):
     if INDEX_PATH.exists():
         lines = INDEX_PATH.read_text(encoding="utf-8").strip().splitlines()
@@ -96,7 +93,7 @@ def update_concepts_index(title, filename):
         INDEX_PATH.write_text("\n".join(lines), encoding="utf-8")
         print(f"🗂️  Added to archive index: {title}")
 
-# Main logic
+# Main
 def main():
     files = get_all_keyword_files()
     print(f"🔍 Found {len(files)} keyword file(s)")
@@ -106,18 +103,19 @@ def main():
     concept_name = chosen_file.stem.replace("_", " ").title()
     context = chosen_file.read_text(encoding="utf-8").strip()
 
-    explanation = ask_openai(concept_name, context)
+    print(f"📌 Generating explanation for: {concept_name}")
+    explanation = ask_groq(concept_name, context)
 
     # Write to homepage
     OUTPUT_FILE.write_text(f"# Concept of the Day: **{concept_name}**\n\n{explanation}", encoding="utf-8")
 
-    # Archive to concepts/YYYY-MM-DD.md
+    # Archive
     ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
     archive_filename = f"{date.today().isoformat()}.md"
     archive_path = ARCHIVE_DIR / archive_filename
     archive_path.write_text(format_output(concept_name, explanation), encoding="utf-8")
 
-    # Update concepts/index.md
+    # Update archive index
     update_concepts_index(concept_name, archive_filename)
 
     print(f"✅ Saved concept: {concept_name}")
