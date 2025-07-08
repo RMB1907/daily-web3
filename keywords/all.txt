@@ -232,7 +232,6 @@ Zero Knowledge Proof
 Zero-Knowledge Proof
 Zk-SNARK
 Zk-STARK
-Zk-Rollup
 ZkSync Era
 Atomic Swap
 Block Reward
