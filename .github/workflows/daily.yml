@@ -1,10 +1,10 @@
 name: Daily Blockchain Concept
 
-on:
-  schedule:
-    - cron: '0 19 * * *'  # 12:30 AM IST
-    - cron: '0 7 * * *'   # 12:30 PM IST
-  workflow_dispatch:
+# on:
+#   schedule:
+#     - cron: '0 19 * * *'  # 12:30 AM IST
+#     - cron: '0 7 * * *'   # 12:30 PM IST
+#   workflow_dispatch:
 
 jobs:
   update:
