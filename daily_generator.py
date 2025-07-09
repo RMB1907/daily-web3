@@ -71,7 +71,7 @@ def update_concepts_index(title, filename):
         lines = ["# Concept Archive", ""]
     entry = f"- [{title}]({filename})"
     if entry not in lines:
-        lines.insert(2, entry)
+        lines.insert(1, entry)
         INDEX_PATH.write_text("\n".join(lines), encoding="utf-8")
         print(f"🗂️  Added to archive index: {title}")
 
