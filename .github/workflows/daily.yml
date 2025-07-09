@@ -40,7 +40,7 @@ jobs:
           git config --global user.name "Auto Commit Bot"
           git config --global user.email "bot@example.com"
 
-          git add docs/index.md docs/concepts/*.md
+          git add docs/index.md docs/concepts/*.md keywords/*.txt
           git commit -m "Daily blockchain concept" || echo "No changes"
 
           git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git HEAD:master
