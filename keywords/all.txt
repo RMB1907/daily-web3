@@ -51,7 +51,6 @@ IBC Protocol
 ICO
 IDO
 IEO
-IPFS
 Infura
 KYC Blockchain
 Kusama
