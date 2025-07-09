@@ -1,14 +1,14 @@
 # Workflow to build and deploy MkDocs site to GitHub Pages
 name: Deploy MkDocs site to GitHub Pages
 
-on:
-  workflow_run:
-    workflows: ["Daily Blockchain Concept"]
-    types:
-      - completed
-  push:
-    branches: ["master"]
-  workflow_dispatch:
+# on:
+#   workflow_run:
+#     workflows: ["Daily Blockchain Concept"]
+#     types:
+#       - completed
+#   push:
+#     branches: ["master"]
+#   workflow_dispatch:
 
 permissions:
   contents: write
