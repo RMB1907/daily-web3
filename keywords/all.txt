@@ -233,7 +233,6 @@ Zero-Knowledge Proof
 Zk-SNARK
 Zk-STARK
 ZkSync Era
-Atomic Swap
 Block Reward
 Cold Wallet
 Consensus Layer
