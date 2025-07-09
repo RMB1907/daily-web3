@@ -105,7 +105,6 @@ Web3 Identity
 Web3 Security
 Web3 Social
 Web3 Wallet
-Web3.js
 Wormhole Bridge
 Zcash
 Zilliqa
