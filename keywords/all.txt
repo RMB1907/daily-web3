@@ -114,7 +114,6 @@ Block Explorer
 Block Header
 Blockchain
 Blockchain CRM
-Blockchain ERP
 Blockchain And AI
 Blockchain And IoT
 Blockchain Bridge
